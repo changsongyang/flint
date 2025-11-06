@@ -250,6 +250,26 @@ func (d *dummyClient) GetVMVNCInfo(uuidStr string) (core.VNCInfo, error) {
 	return core.VNCInfo{}, fmt.Errorf("not implemented in dummy client")
 }
 
+func (d *dummyClient) ListNWFilters() ([]core.NWFilter, error) {
+	return nil, fmt.Errorf("not implemented in dummy client")
+}
+
+func (d *dummyClient) GetNWFilter(name string) (core.NWFilter, error) {
+	return core.NWFilter{}, fmt.Errorf("not implemented in dummy client")
+}
+
+func (d *dummyClient) CreateNWFilter(req core.CreateNWFilterRequest) error {
+	return fmt.Errorf("not implemented in dummy client")
+}
+
+func (d *dummyClient) UpdateNWFilter(name string, req core.CreateNWFilterRequest) error {
+	return fmt.Errorf("not implemented in dummy client")
+}
+
+func (d *dummyClient) DeleteNWFilter(name string) error {
+	return fmt.Errorf("not implemented in dummy client")
+}
+
 var (
 	passphraseFlag string
 	setPassphrase  bool

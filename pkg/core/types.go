@@ -88,19 +88,28 @@ type CloudInitCommonFields struct {
 	NetworkConfig *CloudInitNetworkConfig `json:"networkConfig,omitempty"`
 }
 
+// PXEConfig represents PXE/network boot configuration
+type PXEConfig struct {
+	KernelURL     string `json:"kernelUrl"`     // URL to kernel (vmlinuz)
+	InitrdURL     string `json:"initrdUrl"`     // URL to initrd
+	KernelArgs    string `json:"kernelArgs"`    // Kernel command line arguments (e.g., ks=http://...)
+	BootFromPXE   bool   `json:"bootFromPxe"`   // Whether to boot from network
+}
+
 // VMCreationConfig - updated for cloud-init and image library
 type VMCreationConfig struct {
 	Name            string
 	MemoryMB        uint64
 	VCPUs           int
 	ImageName       string // from managed image library
-	ImageType       string // "iso" or "template"
+	ImageType       string // "iso" or "template" or "pxe"
 	StartOnCreate   bool
 	NetworkName     string           // libvirt network name (ex: default)
 	CloudInit       *CloudInitConfig `json:"cloudInit,omitempty"`
 	DiskPool        string
 	DiskSizeGB      uint64
 	EnableCloudInit bool
+	PXEConfig       *PXEConfig       `json:"pxeConfig,omitempty"` // PXE boot configuration
 }
 
 // Storage / Volume types:
@@ -200,4 +209,29 @@ type VNCInfo struct {
 	VMUUID string `json:"vm_uuid"`
 	Host   string `json:"host"`
 	Port   string `json:"port"`
+}
+
+// NWFilter represents a libvirt network filter
+type NWFilter struct {
+	Name string `json:"name"`
+	UUID string `json:"uuid"`
+	XML  string `json:"xml"`
+}
+
+// NWFilterRule represents a single firewall rule
+type NWFilterRule struct {
+	Action    string `json:"action"`    // "accept" or "drop"
+	Direction string `json:"direction"` // "in", "out", or "inout"
+	Priority  int    `json:"priority"`  // rule priority (lower = higher priority)
+	Protocol  string `json:"protocol"`  // "tcp", "udp", "icmp", "all"
+	SrcIP     string `json:"srcip,omitempty"`
+	DstIP     string `json:"dstip,omitempty"`
+	SrcPort   string `json:"srcport,omitempty"`
+	DstPort   string `json:"dstport,omitempty"`
+}
+
+// CreateNWFilterRequest is the request body for creating a network filter
+type CreateNWFilterRequest struct {
+	Name  string         `json:"name"`
+	Rules []NWFilterRule `json:"rules"`
 }

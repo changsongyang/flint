@@ -510,6 +510,13 @@ func (s *Server) setupRoutes() {
 		r.Post("/image-repository/{imageId}/download", s.handleDownloadRepositoryImage())
 		r.Get("/image-repository/{imageId}/status", s.handleGetDownloadStatus())
 		r.Get("/activity", s.handleGetActivity())
+
+		// Network filter / Firewall endpoints
+		r.Get("/nwfilters", s.handleListNWFilters())
+		r.Get("/nwfilters/{name}", s.handleGetNWFilter())
+		r.Post("/nwfilters", s.handleCreateNWFilter())
+		r.Put("/nwfilters/{name}", s.handleUpdateNWFilter())
+		r.Delete("/nwfilters/{name}", s.handleDeleteNWFilter())
 	})
 
 	// Web UI routes with passphrase authentication

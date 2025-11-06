@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { LanguageToggle } from "@/components/language-toggle"
-import { LayoutDashboard, Server, HardDrive, Network, ImageIcon, Settings, Menu, X, Activity } from "lucide-react"
+import { LayoutDashboard, Server, HardDrive, Network, ImageIcon, Settings, Menu, X, Activity, Shield } from "lucide-react"
 import { vmAPI, hostAPI, HostResources, HostStatus } from "@/lib/api" // Assume HostStatus is imported here
 
 interface AppShellProps {
@@ -25,6 +25,7 @@ export function AppShell({ children }: AppShellProps) {
     { name: t('navigation.virtualMachines'), href: "/vms", icon: Server },
     { name: t('navigation.storage'), href: "/storage", icon: HardDrive },
     { name: t('navigation.networking'), href: "/networking", icon: Network },
+    { name: "Firewall", href: "/firewall", icon: Shield },
     { name: t('navigation.images'), href: "/images", icon: ImageIcon },
     { name: t('navigation.settings'), href: "/settings", icon: Settings },
   ]

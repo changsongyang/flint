@@ -373,3 +373,42 @@ export const imageAPI = {
     }),
   delete: (id: string): Promise<void> => apiRequest(`/images/${id}`, { method: "DELETE" }),
 }
+
+// Network Filter / Firewall API
+export interface NWFilterRule {
+  action: string
+  direction: string
+  priority: number
+  protocol: string
+  srcip?: string
+  dstip?: string
+  srcport?: string
+  dstport?: string
+}
+
+export interface NWFilter {
+  name: string
+  uuid: string
+  xml: string
+}
+
+export interface CreateNWFilterRequest {
+  name: string
+  rules: NWFilterRule[]
+}
+
+export const nwfilters = {
+  list: (): Promise<NWFilter[]> => apiRequest("/nwfilters"),
+  get: (name: string): Promise<NWFilter> => apiRequest(`/nwfilters/${name}`),
+  create: (request: CreateNWFilterRequest): Promise<void> =>
+    apiRequest("/nwfilters", {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+  update: (name: string, request: CreateNWFilterRequest): Promise<void> =>
+    apiRequest(`/nwfilters/${name}`, {
+      method: "PUT",
+      body: JSON.stringify(request),
+    }),
+  delete: (name: string): Promise<void> => apiRequest(`/nwfilters/${name}`, { method: "DELETE" }),
+}

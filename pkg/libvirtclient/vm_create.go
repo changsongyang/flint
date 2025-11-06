@@ -35,6 +35,9 @@ type DomainXML struct {
 		Boot struct {
 			Dev string `xml:"dev,attr"`
 		} `xml:"boot"`
+		Kernel  string `xml:"kernel,omitempty"`  // For PXE: kernel URL
+		Initrd  string `xml:"initrd,omitempty"`  // For PXE: initrd URL
+		Cmdline string `xml:"cmdline,omitempty"` // For PXE: kernel arguments
 	} `xml:"os"`
 	Devices struct {
 		Emulator string `xml:"emulator"`
@@ -159,6 +162,16 @@ func (c *Client) CreateVM(cfg core.VMCreationConfig) (core.VM_Detailed, error) {
 		}
 	} else if cfg.ImageType == "iso" && sourcePath != "" {
 		// For ISO installations, create an empty disk for the OS installation
+		diskName = fmt.Sprintf("%s-disk-0.qcow2", cfg.Name)
+		volCfg := core.VolumeConfig{
+			Name:   diskName,
+			SizeGB: uint64(cfg.DiskSizeGB),
+		}
+		if err := c.CreateVolume(flintImagePoolName, volCfg); err != nil {
+			return core.VM_Detailed{}, fmt.Errorf("could not create vm disk volume: %w", err)
+		}
+	} else if cfg.ImageType == "pxe" {
+		// For PXE installations, create an empty disk for the OS installation
 		diskName = fmt.Sprintf("%s-disk-0.qcow2", cfg.Name)
 		volCfg := core.VolumeConfig{
 			Name:   diskName,
@@ -360,6 +373,15 @@ func buildDomainXML(cfg core.VMCreationConfig, diskVolumeName string, sourcePath
 		}
 		d.Devices.Disks = append(d.Devices.Disks, cdrom)
 		d.OS.Boot.Dev = "cdrom" // Set boot order to CDROM
+	}
+
+	// --- PXE Boot Configuration ---
+	if cfg.PXEConfig != nil && cfg.PXEConfig.BootFromPXE {
+		// Set kernel, initrd, and cmdline for network boot
+		d.OS.Kernel = cfg.PXEConfig.KernelURL
+		d.OS.Initrd = cfg.PXEConfig.InitrdURL
+		d.OS.Cmdline = cfg.PXEConfig.KernelArgs
+		d.OS.Boot.Dev = "network" // Boot from network
 	}
 
 	// --- Network Interface ---

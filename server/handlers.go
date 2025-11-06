@@ -1598,3 +1598,106 @@ func (s *Server) handleVMVNCWebSocket() http.HandlerFunc {
 		log.Printf("VNC WebSocket proxy closed for VM %s", uuid)
 	}
 }
+
+// ========== NWFilter / Firewall Handlers ==========
+
+// handleListNWFilters lists all network filters
+func (s *Server) handleListNWFilters() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		filters, err := s.client.ListNWFilters()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(filters)
+	}
+}
+
+// handleGetNWFilter gets a specific network filter
+func (s *Server) handleGetNWFilter() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("name")
+		if name == "" {
+			http.Error(w, "filter name required", http.StatusBadRequest)
+			return
+		}
+
+		filter, err := s.client.GetNWFilter(name)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(filter)
+	}
+}
+
+// handleCreateNWFilter creates a new network filter
+func (s *Server) handleCreateNWFilter() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req core.CreateNWFilterRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if req.Name == "" {
+			http.Error(w, "filter name required", http.StatusBadRequest)
+			return
+		}
+
+		if err := s.client.CreateNWFilter(req); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"message": "filter created"})
+	}
+}
+
+// handleUpdateNWFilter updates an existing network filter
+func (s *Server) handleUpdateNWFilter() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("name")
+		if name == "" {
+			http.Error(w, "filter name required", http.StatusBadRequest)
+			return
+		}
+
+		var req core.CreateNWFilterRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if err := s.client.UpdateNWFilter(name, req); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"message": "filter updated"})
+	}
+}
+
+// handleDeleteNWFilter deletes a network filter
+func (s *Server) handleDeleteNWFilter() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("name")
+		if name == "" {
+			http.Error(w, "filter name required", http.StatusBadRequest)
+			return
+		}
+
+		if err := s.client.DeleteNWFilter(name); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"message": "filter deleted"})
+	}
+}

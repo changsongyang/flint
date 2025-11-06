@@ -29,7 +29,7 @@ import {
 
 interface SimpleVMConfig {
   name: string
-  sourceType: "iso" | "cloud"
+  sourceType: "iso" | "cloud" | "pxe"
   selectedSource: string
   vcpus: number
   memory: number
@@ -45,6 +45,10 @@ interface SimpleVMConfig {
   staticIP: string
   gateway: string
   dnsServers: string
+  // PXE configuration
+  pxeKernelUrl: string
+  pxeInitrdUrl: string
+  pxeKernelArgs: string
 }
 
 export function SimpleVMWizard() {
@@ -67,6 +71,9 @@ export function SimpleVMWizard() {
     hostname: "",
     username: "ubuntu",
     password: "",
+    pxeKernelUrl: "",
+    pxeInitrdUrl: "",
+    pxeKernelArgs: "",
     sshKeys: "",
     networkType: "dhcp",
     staticIP: "",
@@ -156,7 +163,27 @@ export function SimpleVMWizard() {
   }
 
   const handleCreate = async () => {
-    if (!config.name.trim() || !config.selectedSource) {
+    // Validation
+    if (!config.name.trim()) {
+      toast({
+        title: t('vm.missingInformation'),
+        description: t('vm.fillInRequiredFields'),
+        variant: "destructive",
+      })
+      return
+    }
+
+    // For PXE, validate PXE fields instead of selectedSource
+    if (config.sourceType === 'pxe') {
+      if (!config.pxeKernelUrl || !config.pxeInitrdUrl) {
+        toast({
+          title: t('vm.missingInformation'),
+          description: 'Kernel URL and Initrd URL are required for PXE boot',
+          variant: "destructive",
+        })
+        return
+      }
+    } else if (!config.selectedSource) {
       toast({
         title: t('vm.missingInformation'),
         description: t('vm.fillInRequiredFields'),
@@ -167,16 +194,36 @@ export function SimpleVMWizard() {
 
     setIsCreating(true)
     try {
-      const formData = {
+      const formData: any = {
         Name: config.name,
         MemoryMB: config.memory,
         VCPUs: config.vcpus,
         DiskPool: config.storagePool,
         DiskSizeGB: config.diskSize,
-        imageName: config.selectedSource, // Use imageName for both ISO and template
-        imageType: config.sourceType === 'cloud' ? 'template' : 'iso',
-        enableCloudInit: config.enableCloudInit,
-        cloudInit: config.enableCloudInit ? {
+        imageType: config.sourceType === 'cloud' ? 'template' : config.sourceType === 'pxe' ? 'pxe' : 'iso',
+        StartOnCreate: true,
+        NetworkName: config.network,
+      }
+
+      // Add imageName for ISO/cloud sources
+      if (config.sourceType !== 'pxe') {
+        formData.imageName = config.selectedSource
+      }
+
+      // Add PXE configuration
+      if (config.sourceType === 'pxe') {
+        formData.pxeConfig = {
+          kernelUrl: config.pxeKernelUrl,
+          initrdUrl: config.pxeInitrdUrl,
+          kernelArgs: config.pxeKernelArgs,
+          bootFromPxe: true
+        }
+      }
+
+      // Add CloudInit configuration
+      if (config.enableCloudInit) {
+        formData.enableCloudInit = true
+        formData.cloudInit = {
           commonFields: {
             hostname: config.hostname || config.name,
             username: config.username,
@@ -190,9 +237,7 @@ export function SimpleVMWizard() {
             }
           },
           rawUserData: ""
-        } : null,
-        StartOnCreate: true,
-        NetworkName: config.network,
+        }
       }
 
       const response = await fetch('/api/vms', {
@@ -424,10 +469,10 @@ export function SimpleVMWizard() {
                     enableCloudInit: value === "cloud"
                   })}
                 >
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <div className={`flex items-center space-x-3 rounded-lg border-2 p-3 cursor-pointer ${
-                      config.sourceType === "cloud" 
-                        ? "border-primary bg-primary/10" 
+                      config.sourceType === "cloud"
+                        ? "border-primary bg-primary/10"
                         : "border-muted hover:border-accent"
                     }`}
                     onClick={() => updateConfig({ sourceType: "cloud", selectedSource: "", enableCloudInit: true })}>
@@ -441,8 +486,8 @@ export function SimpleVMWizard() {
                     </div>
 
                     <div className={`flex items-center space-x-3 rounded-lg border-2 p-3 cursor-pointer ${
-                      config.sourceType === "iso" 
-                        ? "border-primary bg-primary/10" 
+                      config.sourceType === "iso"
+                        ? "border-primary bg-primary/10"
                         : "border-muted hover:border-accent"
                     }`}
                     onClick={() => updateConfig({ sourceType: "iso", selectedSource: "", enableCloudInit: false })}>
@@ -452,6 +497,21 @@ export function SimpleVMWizard() {
                           {t('vm.isoImage')}
                         </Label>
                         <p className="text-xs text-muted-foreground">{t('vm.manualInstallation')}</p>
+                      </div>
+                    </div>
+
+                    <div className={`flex items-center space-x-3 rounded-lg border-2 p-3 cursor-pointer ${
+                      config.sourceType === "pxe"
+                        ? "border-primary bg-primary/10"
+                        : "border-muted hover:border-accent"
+                    }`}
+                    onClick={() => updateConfig({ sourceType: "pxe", selectedSource: "", enableCloudInit: false })}>
+                      <RadioGroupItem value="pxe" id="pxe" />
+                      <div className="flex-1">
+                        <Label htmlFor="pxe" className="font-medium cursor-pointer">
+                          PXE Boot
+                        </Label>
+                        <p className="text-xs text-muted-foreground">Network installation</p>
                       </div>
                     </div>
                   </div>
@@ -503,8 +563,8 @@ export function SimpleVMWizard() {
                         <div
                           key={image.id}
                           className={`cursor-pointer rounded-lg border p-3 transition-all ${
-                            config.selectedSource === image.name 
-                              ? "border-primary bg-primary/10" 
+                            config.selectedSource === image.name
+                              ? "border-primary bg-primary/10"
                               : "border-muted hover:border-accent hover:bg-muted/50"
                           }`}
                           onClick={() => updateConfig({ selectedSource: image.name })}
@@ -523,6 +583,49 @@ export function SimpleVMWizard() {
                         {t('vm.noISOImagesAvailable')}
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {config.sourceType === "pxe" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="pxe-kernel">Kernel URL *</Label>
+                    <Input
+                      id="pxe-kernel"
+                      placeholder="http://example.com/vmlinuz"
+                      value={config.pxeKernelUrl}
+                      onChange={(e) => updateConfig({ pxeKernelUrl: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      URL to the kernel image (vmlinuz)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="pxe-initrd">Initrd URL *</Label>
+                    <Input
+                      id="pxe-initrd"
+                      placeholder="http://example.com/initrd.img"
+                      value={config.pxeInitrdUrl}
+                      onChange={(e) => updateConfig({ pxeInitrdUrl: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      URL to the initial ramdisk image
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="pxe-cmdline">Kernel Arguments</Label>
+                    <Input
+                      id="pxe-cmdline"
+                      placeholder="inst.ks=http://example.com/kickstart.cfg"
+                      value={config.pxeKernelArgs}
+                      onChange={(e) => updateConfig({ pxeKernelArgs: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Optional kernel command line arguments (e.g., kickstart URL)
+                    </p>
                   </div>
                 </div>
               )}

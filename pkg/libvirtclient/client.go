@@ -67,6 +67,13 @@ type ClientInterface interface {
 
 	// VNC operations
 	GetVMVNCInfo(uuidStr string) (core.VNCInfo, error)
+
+	// Firewall/NWFilter operations
+	ListNWFilters() ([]core.NWFilter, error)
+	GetNWFilter(name string) (core.NWFilter, error)
+	CreateNWFilter(req core.CreateNWFilterRequest) error
+	UpdateNWFilter(name string, req core.CreateNWFilterRequest) error
+	DeleteNWFilter(name string) error
 }
 
 // Client holds the libvirt connection.
